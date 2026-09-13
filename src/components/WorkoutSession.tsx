@@ -21,7 +21,7 @@ export function WorkoutSession({ exerciseId, onExit, onFinish }: WorkoutSessionP
   const [saved, setSaved] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const { repState, currentAngle, formScore, feedbackMessages, isModelLoading, modelError, retryModelLoad } =
+  const { repState, currentAngle, formScore, feedbackMessages, isModelLoading, modelError, retryModelLoad, mlStatus, classification } =
     usePoseDetection({ exercise, isActive, videoRef, canvasRef });
 
   // Timer
@@ -238,6 +238,56 @@ export function WorkoutSession({ exerciseId, onExit, onFinish }: WorkoutSessionP
               />
             </div>
           </div>
+
+          {mlStatus === 'ready' && classification && (
+            <div className="ml-card">
+              <div className="ml-header">
+                <span className="ml-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3c0 1.6-1.4 3-3 3a3 3 0 0 0 0 6c1.6 0 3 1.4 3 3a3 3 0 0 0 6 0c0-1.6 1.4-3 3-3a3 3 0 0 0 0-6c-1.6 0-3-1.4-3-3a3 3 0 0 0-3-3z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  AI Classification
+                </span>
+                <span className="ml-confidence">
+                  {Math.round(classification.confidence * 100)}%
+                </span>
+              </div>
+              <div className={`ml-quality ${classification.quality}`}>
+                {classification.quality === 'good' ? 'Good Form' : classification.quality === 'needs_work' ? 'Needs Work' : 'Poor Form'}
+              </div>
+              <div className="ml-bars">
+                <div className="ml-bar-row">
+                  <span className="ml-bar-label">Good</span>
+                  <div className="ml-bar-track">
+                    <div className="ml-bar-fill good" style={{ width: `${classification.scores.good * 100}%` }} />
+                  </div>
+                  <span className="ml-bar-pct'>{Math.round(classification.scores.good * 100)}%</span>
+                </div>
+                <div className="ml-bar-row">
+                  <span className="ml-bar-label">Fair</span>
+                  <div className="ml-bar-track">
+                    <div className="ml-bar-fill fair" style={{ width: `${classification.scores.needs_work * 100}%` }} />
+                  </div>
+                  <span className="ml-bar-pct">{Math.round(classification.scores.needs_work * 100)}%</span>
+                </div>
+                <div className="ml-bar-row">
+                  <span className="ml-bar-label">Poor</span>
+                  <div className="ml-bar-track">
+                    <div className="ml-bar-fill poor" style={{ width: `${classification.scores.poor * 100}%` }} />
+                  </div>
+                  <span className="ml-bar-pct">{Math.round(classification.scores.poor * 100)}%</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {mlStatus === 'training' && (
+            <div className="ml-card ml-card-loading">
+              <div className="ml-spinner" />
+              <span className="ml-loading-text">Training neural network...</span>
+            </div>
+          )}
 
           <div className="rep-breakdown">
             <div className="rep-breakdown-item good">

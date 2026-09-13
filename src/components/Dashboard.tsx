@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ExerciseConfig, ExerciseId, WorkoutSession } from '../types';
 import { fetchWorkouts } from '../lib/supabase';
+import { AIInsights } from './AIInsights';
 
 interface DashboardProps {
   exercises: ExerciseConfig[];
@@ -87,6 +88,10 @@ export function Dashboard({ exercises, onSelectExercise, onGoToHistory }: Dashbo
           </div>
         </div>
       </section>
+
+      {!loading && (
+        <AIInsights workouts={workouts} onSelectExercise={onSelectExercise} />
+      )}
 
       <section className="exercise-section">
         <div className="section-header">

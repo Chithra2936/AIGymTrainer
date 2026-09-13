@@ -4,7 +4,7 @@ import {
   PoseLandmarker,
   type PoseLandmarkerResult,
 } from '@mediapipe/tasks-vision';
-import type { ExerciseConfig, FeedbackMessage, RepState } from '../types';
+import type { ExerciseConfig, FeedbackMessage, RepState, ClassificationResult, ModelStatus } from '../types';
 import {
   checkForm,
   createRepState,
@@ -13,6 +13,7 @@ import {
   updateRepCount,
   type Landmarks,
 } from '../lib/poseUtils';
+import { formClassifier } from '../lib/formClassifier';
 
 interface UsePoseDetectionProps {
   exercise: ExerciseConfig;
@@ -29,6 +30,8 @@ interface UsePoseDetectionReturn {
   isModelLoading: boolean;
   modelError: string | null;
   retryModelLoad: () => void;
+  mlStatus: ModelStatus;
+  classification: ClassificationResult | null;
 }
 
 export function usePoseDetection({
@@ -45,6 +48,8 @@ export function usePoseDetection({
   );
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [modelError, setModelError] = useState<string | null>(null);
+  const [mlStatus, setMlStatus] = useState<ModelStatus>('untrained');
+  const [classification, setClassification] = useState<ClassificationResult | null>(null);
 
   const landmarkerRef = useRef<PoseLandmarker | null>(null);
   const repStateRef = useRef<RepState>(createRepState());
@@ -97,8 +102,12 @@ export function usePoseDetection({
   // Load the PoseLandmarker model on mount
   useEffect(() => {
     loadModel();
+    const unsub = formClassifier.onStatusChange((status) => setMlStatus(status));
+    formClassifier.train();
     return () => {
       cancelledRef.current = true;
+      unsub();
+      formClassifier.dispose();
       if (landmarkerRef.current) {
         landmarkerRef.current.close();
         landmarkerRef.current = null;
@@ -213,6 +222,12 @@ export function usePoseDetection({
         const { score, issues } = checkForm(landmarks, exercise);
         setFormScore(score);
 
+        // ML classification
+        if (formClassifier.getStatus() === 'ready') {
+          const result = formClassifier.classify(landmarks, exercise.id);
+          setClassification(result);
+        }
+
         if (issues.length > 0) {
           addFeedback(issues[0], 'warning');
         } else if (score === 100 && repStateRef.current.phase === 'down') {
@@ -252,5 +267,7 @@ export function usePoseDetection({
     isModelLoading,
     modelError,
     retryModelLoad: loadModel,
+    mlStatus,
+    classification,
   };
 }

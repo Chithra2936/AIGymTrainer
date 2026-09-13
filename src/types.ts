@@ -55,3 +55,13 @@ export interface FeedbackMessage {
   severity: 'info' | 'success' | 'warning' | 'error';
   id: number;
 }
+
+export type FormQuality = 'good' | 'needs_work' | 'poor';
+
+export type ModelStatus = 'untrained' | 'training' | 'ready';
+
+export interface ClassificationResult {
+  quality: FormQuality;
+  confidence: number;
+  scores: { good: number; needs_work: number; poor: number };
+}
