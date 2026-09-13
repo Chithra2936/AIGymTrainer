@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/components/Dashboard.tsx","./src/components/History.tsx","./src/components/Sidebar.tsx","./src/components/WorkoutSession.tsx","./src/hooks/usePoseDetection.ts","./src/lib/exercises.ts","./src/lib/poseUtils.ts","./src/lib/supabase.ts"],"version":"5.9.3"}
