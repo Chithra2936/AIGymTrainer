@@ -1,4 +1,3 @@
-import * as tf from '@tensorflow/tfjs';
 import type { ExerciseId, JointId, FormQuality, ModelStatus, ClassificationResult } from '../types';
 import { getJointAngle, type Landmarks } from './poseUtils';
 import { EXERCISES } from './exercises';
@@ -37,7 +36,6 @@ function generateSyntheticDataset(): { xs: number[][]; ys: number[][] } {
     for (let s = 0; s < samplesPerClass; s++) {
       const t = s / samplesPerClass;
 
-      // GOOD form: angles near ideal ranges, minor noise
       {
         const angles = ALL_JOINTS.map((j) => {
           const ideal = getIdealAngle(j, ex.id);
@@ -48,7 +46,6 @@ function generateSyntheticDataset(): { xs: number[][]; ys: number[][] } {
         ys.push([1, 0, 0]);
       }
 
-      // NEEDS_WORK: moderate deviation
       {
         const angles = ALL_JOINTS.map((j) => {
           const ideal = getIdealAngle(j, ex.id);
@@ -60,7 +57,6 @@ function generateSyntheticDataset(): { xs: number[][]; ys: number[][] } {
         ys.push([0, 1, 0]);
       }
 
-      // POOR: large deviation
       {
         const angles = ALL_JOINTS.map((j) => {
           const ideal = getIdealAngle(j, ex.id);
@@ -95,8 +91,14 @@ function getIdealAngle(joint: JointId, exerciseId: ExerciseId): number {
   return 120;
 }
 
+type TfModel = {
+  predict: (input: unknown) => { dataSync: () => Float32Array; dispose: () => void };
+  dispose: () => void;
+};
+
 export class FormClassifier {
-  private model: tf.LayersModel | null = null;
+  private model: TfModel | null = null;
+  private tfInstance: typeof import('@tensorflow/tfjs') | null = null;
   private status: ModelStatus = 'untrained';
   private listeners: ((status: ModelStatus) => void)[] = [];
 
@@ -120,6 +122,8 @@ export class FormClassifier {
     this.setStatus('training');
 
     try {
+      const tf = await import('@tensorflow/tfjs');
+      this.tfInstance = tf;
       await tf.ready();
 
       if (this.model) {
@@ -170,7 +174,7 @@ export class FormClassifier {
       xsTensor.dispose();
       ysTensor.dispose();
 
-      this.model = model;
+      this.model = model as unknown as TfModel;
       this.setStatus('ready');
     } catch {
       this.setStatus('untrained');
@@ -178,7 +182,7 @@ export class FormClassifier {
   }
 
   classify(landmarks: Landmarks, exerciseId: ExerciseId): ClassificationResult {
-    if (!this.model || this.status !== 'ready') {
+    if (!this.model || !this.tfInstance || this.status !== 'ready') {
       return {
         quality: 'needs_work',
         confidence: 0,
@@ -186,9 +190,10 @@ export class FormClassifier {
       };
     }
 
+    const tf = this.tfInstance;
     const features = extractFeatures(landmarks, exerciseId);
     const input = tf.tensor2d([features]);
-    const output = this.model.predict(input) as tf.Tensor;
+    const output = this.model.predict(input);
     const data = output.dataSync();
 
     input.dispose();
@@ -221,6 +226,7 @@ export class FormClassifier {
       this.model.dispose();
       this.model = null;
     }
+    this.tfInstance = null;
     this.setStatus('untrained');
   }
 }
