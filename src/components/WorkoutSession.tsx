@@ -19,19 +19,27 @@ export function WorkoutSession({ exerciseId, onExit, onFinish }: WorkoutSessionP
   const [elapsed, setElapsed] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const { repState, currentAngle, formScore, feedbackMessages, isModelLoading, modelError, retryModelLoad, mlStatus, classification } =
-    usePoseDetection({ exercise, isActive, videoRef, canvasRef });
+  const {
+    repState,
+    currentAngle,
+    formScore,
+    feedbackMessages,
+    isModelLoading,
+    modelError,
+    retryModelLoad,
+    mlStatus,
+    classification,
+  } = usePoseDetection({ exercise, isActive, videoRef, canvasRef });
 
-  // Timer
   useEffect(() => {
     if (!isActive) return;
     const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(interval);
   }, [isActive]);
 
-  // Start camera
   const startCamera = useCallback(async () => {
     try {
       setCameraError(null);
@@ -46,13 +54,10 @@ export function WorkoutSession({ exerciseId, onExit, onFinish }: WorkoutSessionP
       }
       setIsActive(true);
     } catch {
-      setCameraError(
-        'Could not access your camera. Please allow camera permissions and try again.'
-      );
+      setCameraError('Could not access your camera. Please allow camera permissions and try again.');
     }
   }, []);
 
-  // Stop camera
   const stopCamera = useCallback(() => {
     setIsActive(false);
     if (streamRef.current) {
@@ -70,6 +75,7 @@ export function WorkoutSession({ exerciseId, onExit, onFinish }: WorkoutSessionP
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const avgScore =
         repState.formScores.length > 0
@@ -88,6 +94,7 @@ export function WorkoutSession({ exerciseId, onExit, onFinish }: WorkoutSessionP
       setTimeout(() => onFinish(), 1200);
     } catch {
       setSaving(false);
+      setSaveError('Failed to save workout. Check your connection and try again.');
     }
   };
 
@@ -101,6 +108,22 @@ export function WorkoutSession({ exerciseId, onExit, onFinish }: WorkoutSessionP
     const sec = s % 60;
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
+
+  const qualityLabel = classification
+    ? classification.quality === 'good'
+      ? 'Good Form'
+      : classification.quality === 'needs_work'
+        ? 'Needs Work'
+        : 'Poor Form'
+    : '';
+
+  const goodPct = classification ? Math.round(classification.scores.good * 100) : 0;
+  const fairPct = classification ? Math.round(classification.scores.needs_work * 100) : 0;
+  const poorPct = classification ? Math.round(classification.scores.poor * 100) : 0;
+  const confidencePct = classification ? Math.round(classification.confidence * 100) : 0;
+  const goodWidth = classification ? classification.scores.good * 100 : 0;
+  const fairWidth = classification ? classification.scores.needs_work * 100 : 0;
+  const poorWidth = classification ? classification.scores.poor * 100 : 0;
 
   return (
     <div className="workout-session">
@@ -185,6 +208,7 @@ export function WorkoutSession({ exerciseId, onExit, onFinish }: WorkoutSessionP
 
           {isActive && (
             <div className="workout-controls">
+              {saveError && <span className="save-error-text">{saveError}</span>}
               <button className="btn-stop" onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving...' : 'Finish & Save'}
               </button>
@@ -249,34 +273,32 @@ export function WorkoutSession({ exerciseId, onExit, onFinish }: WorkoutSessionP
                   </svg>
                   AI Classification
                 </span>
-                <span className="ml-confidence">
-                  {Math.round(classification.confidence * 100)}%
-                </span>
+                <span className="ml-confidence">{confidencePct}%</span>
               </div>
               <div className={`ml-quality ${classification.quality}`}>
-                {classification.quality === 'good' ? 'Good Form' : classification.quality === 'needs_work' ? 'Needs Work' : 'Poor Form'}
+                {qualityLabel}
               </div>
               <div className="ml-bars">
                 <div className="ml-bar-row">
                   <span className="ml-bar-label">Good</span>
                   <div className="ml-bar-track">
-                    <div className="ml-bar-fill good" style={{ width: `${classification.scores.good * 100}%` }} />
+                    <div className="ml-bar-fill good" style={{ width: `${goodWidth}%` }} />
                   </div>
-                  <span className="ml-bar-pct'>{Math.round(classification.scores.good * 100)}%</span>
+                  <span className="ml-bar-pct">{goodPct}%</span>
                 </div>
                 <div className="ml-bar-row">
                   <span className="ml-bar-label">Fair</span>
                   <div className="ml-bar-track">
-                    <div className="ml-bar-fill fair" style={{ width: `${classification.scores.needs_work * 100}%` }} />
+                    <div className="ml-bar-fill fair" style={{ width: `${fairWidth}%` }} />
                   </div>
-                  <span className="ml-bar-pct">{Math.round(classification.scores.needs_work * 100)}%</span>
+                  <span className="ml-bar-pct">{fairPct}%</span>
                 </div>
                 <div className="ml-bar-row">
                   <span className="ml-bar-label">Poor</span>
                   <div className="ml-bar-track">
-                    <div className="ml-bar-fill poor" style={{ width: `${classification.scores.poor * 100}%` }} />
+                    <div className="ml-bar-fill poor" style={{ width: `${poorWidth}%` }} />
                   </div>
-                  <span className="ml-bar-pct">{Math.round(classification.scores.poor * 100)}%</span>
+                  <span className="ml-bar-pct">{poorPct}%</span>
                 </div>
               </div>
             </div>

@@ -1,17 +1,7 @@
 import * as tf from '@tensorflow/tfjs';
-import type { ExerciseId, JointId } from '../types';
+import type { ExerciseId, JointId, FormQuality, ModelStatus, ClassificationResult } from '../types';
 import { getJointAngle, type Landmarks } from './poseUtils';
 import { EXERCISES } from './exercises';
-
-export type FormQuality = 'good' | 'needs_work' | 'poor';
-
-export interface ClassificationResult {
-  quality: FormQuality;
-  confidence: number;
-  scores: { good: number; needs_work: number; poor: number };
-}
-
-export type ModelStatus = 'untrained' | 'training' | 'ready';
 
 const NUM_JOINTS = 8;
 const INPUT_SIZE = NUM_JOINTS + 1;
@@ -160,7 +150,7 @@ export class FormClassifier {
       });
 
       model.compile({
-        optimizer: tf.adam(0.001),
+        optimizer: tf.train.adam(0.001),
         loss: 'categoricalCrossentropy',
         metrics: ['accuracy'],
       });

@@ -18,7 +18,7 @@ export default function App() {
   };
 
   const handleFinishWorkout = () => {
-    setView('history');
+    setView('dashboard');
   };
 
   return (

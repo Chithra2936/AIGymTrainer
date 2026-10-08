@@ -858,7 +858,14 @@ button {
 /* Workout Controls */
 .workout-controls {
   display: flex;
+  align-items: center;
   gap: 12px;
+}
+
+.save-error-text {
+  font-size: 13px;
+  color: var(--error);
+  flex: 1;
 }
 
 .btn-stop {
